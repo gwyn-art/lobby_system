@@ -1,0 +1,9 @@
+[package]
+name = "lobby_system"
+version = "0.1.0"
+authors = ["gwyn-art <gwyn.artstyle@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rocket = "0.4.2"
+rand = "0.7.0"
