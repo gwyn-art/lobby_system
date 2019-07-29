@@ -11,7 +11,10 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use rocket_contrib::json::{Json, JsonValue};
-use rocket::State;
+use rocket::{
+    State,
+    response::status::NotFound
+};
 use uuid::Uuid;
 
 #[derive(Clone, Serialize)]
@@ -25,6 +28,13 @@ struct Player {
     pub uuid: Uuid,
     pub name: String,
     pub role: PlayerRole
+}
+
+fn players_from_lobby(players_id: &mut Vec<Uuid>, players: &HashMap<Uuid, Player>) -> Vec<Player> {
+    players_id
+        .iter_mut()
+        .map(|player_id| players.get(player_id).unwrap().clone())
+        .collect()
 }
 
 #[derive(Clone, Deserialize)]
@@ -57,7 +67,7 @@ fn create_code() -> String {
         .collect()
 }
 
-#[post("/new/lobby", format = "json", data = "<player>")]
+#[post("/new/lobby", data = "<player>")]
 fn lobby_new<'r>(player: Json<PlayerNew>, lobby_system: State<'r, LobbySystem>) -> Option<JsonValue> {
     let code = create_code();
     let mut lobbies = lobby_system.inner().lobbies.lock().unwrap();
@@ -82,6 +92,38 @@ fn lobby_new<'r>(player: Json<PlayerNew>, lobby_system: State<'r, LobbySystem>) 
         "creator": new_player
     }))
     
+}
+
+#[post("/join/lobby/<code>", data = "<player>")]
+fn lobby_join<'r>(
+    code: String, 
+    player: Json<PlayerNew>, 
+    lobby_system: State<'r, LobbySystem>
+) -> Result<JsonValue, NotFound<JsonValue>> {
+    let mut lobbies = lobby_system.inner().lobbies.lock().unwrap();
+    let option_lobby = lobbies.get_mut(&code);
+
+    match option_lobby {
+        Some(lobby) => {
+            let mut players = lobby_system.inner().players.lock().unwrap();
+            let new_player = Player {
+                uuid: Uuid::new_v4(),
+                name: player.name.clone(),
+                role: PlayerRole::Default
+            };
+
+            lobby.players_id.push(new_player.uuid.clone());
+            players.insert(new_player.uuid.clone(), new_player);
+
+            Ok(json!({
+                "code": lobby.code,
+                "players": players_from_lobby(&mut lobby.players_id.clone(), &players)
+            }))
+        },
+        None => {
+            Err(NotFound(json!({"error": "Lobby not found."})))
+        }
+    }
 }
 
 #[get("/all/lobby")]
@@ -118,6 +160,7 @@ fn main() {
         .mount("/", routes![
             lobby_new,
             lobby_all,
+            lobby_join,
             player_all
         ])
         .launch();
