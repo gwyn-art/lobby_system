@@ -1,14 +1,18 @@
 #![feature(proc_macro_hygiene, decl_macro, rustc_private)]
 
 #[macro_use] extern crate rocket;
+#[macro_use] extern crate serde_derive;
+extern crate rocket_contrib;
 extern crate rand;
 
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::Mutex;
+
+use rocket_contrib::json::{Json};
 use rocket::State;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Lobby {
     pub code: String
 }
@@ -37,27 +41,28 @@ fn index() -> &'static str {
 }
 
 #[get("/new/lobby")]
-fn lobby_new<'r>(memory: State<'r, LobbySystem>) -> String {
+fn lobby_new<'r>(lobby_system: State<'r, LobbySystem>) -> Option<Json<Lobby>> {
     let code = create_code();
     
-    let mut new_lobby = memory.inner().lobbies.lock().unwrap();
-    new_lobby.insert(code.clone(), Lobby {
+    let mut lobbies = lobby_system.inner().lobbies.lock().unwrap();
+    let new_lobby = Lobby {
         code: code.clone()
-    });
+    };
 
-    format!("Your code is: {}", code)
+    lobbies.insert(code.clone(), new_lobby.clone());
+
+    Some(Json(new_lobby))
 }
 
 #[get("/all/lobby")]
-fn lobby_all<'r>(memory: State<'r, LobbySystem>) -> String {
-    let lobby = memory.inner().lobbies.lock().unwrap();
-    let mut res = String::new();
+fn lobby_all<'r>(lobby_system: State<'r, LobbySystem>) -> Option<Json<Vec<Lobby>>> {
+    let lobbies = lobby_system.inner().lobbies.lock().unwrap();
+    let res = lobbies
+        .values()
+        .map(|lobby| lobby.clone())
+        .collect::<Vec<Lobby>>();
 
-    for x in lobby.iter() {
-        res = format!("{}{}\n", res, x.0);
-    }
-
-    format!("All games: \n{}", res)
+    Some(Json(res))
 }
 
 fn main() {
