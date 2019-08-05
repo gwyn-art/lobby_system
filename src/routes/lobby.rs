@@ -1,17 +1,14 @@
-use crate::player::*;
-use crate::lobby::*;
-use crate::LobbyState;
-
 use rocket_contrib::json::{Json, JsonValue};
 use rocket::{
     State,
     response::status::{
-        NotFound,
         BadRequest
     }
 };
-use uuid::Uuid;
 
+use crate::player::*;
+use crate::lobby::*;
+use crate::LobbyState;
 use crate::player::create_player;
 
 #[post("/new/lobby", data = "<player>")]
@@ -21,13 +18,7 @@ pub fn lobby_new<'r>(
 ) -> Result<JsonValue, BadRequest<JsonValue>> {
     let code = create_code();
     let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
-    let new_player = create_player(player.0, PlayerRole::Admin, &lobby_state);
-
-    if new_player.is_err() {
-        return Err(BadRequest(Some(new_player.unwrap_err())));
-    }
-
-    let new_player = new_player.unwrap();
+    let new_player = create_player(player.0, PlayerRole::Admin, &lobby_state)?;
 
     let new_lobby = Lobby {
         code: code.clone(),
@@ -50,18 +41,11 @@ pub fn lobby_join<'r>(
     lobby_state: State<'r, LobbyState>
 ) -> Result<JsonValue, BadRequest<JsonValue>> {
     let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
-    let option_lobby = lobbies.get_mut(&code);
 
-    match option_lobby {
+    match lobbies.get_mut(&code) {
         Some(lobby) => {
             let new_player = 
-                create_player(player.0, PlayerRole::Default, &lobby_state);
-
-            if new_player.is_err() {
-                return Err(BadRequest(Some(new_player.unwrap_err())));
-            }
-
-            let new_player = new_player.unwrap();
+                create_player(player.0, PlayerRole::Default, &lobby_state)?;
 
             lobby.players_id.push(new_player.uuid.clone());
 
@@ -74,7 +58,10 @@ pub fn lobby_join<'r>(
             }))
         },
         None => {
-            Err(BadRequest(Some(json!({"error": "Lobby not found."}))))
+            Err(BadRequest(Some(json!({
+                "error": "Lobby not found.",
+                "success": false
+            }))))
         }
     }
 }

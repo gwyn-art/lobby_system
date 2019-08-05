@@ -44,7 +44,7 @@ pub fn create_player<'r>(
     player: PlayerNew, 
     role: PlayerRole, 
     lobby_state: & State<'r, LobbyState>
-) -> Result<Player, JsonValue> {
+) -> Result<Player, BadRequest<JsonValue>> {
     match player.validate() {
         Ok(_) => {
             let new_player = Player {
@@ -59,12 +59,12 @@ pub fn create_player<'r>(
             Ok(new_player)
         }
         Err(errors) => {
-            Err(json!(
+            Err(BadRequest(Some(json!(
                 {
                     "success": false,
                     "err": errors_to_map(&errors)
                 }
-            ))
+            ))))
         }
     }
 } 
