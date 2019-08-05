@@ -5,21 +5,29 @@ use crate::LobbyState;
 use rocket_contrib::json::{Json, JsonValue};
 use rocket::{
     State,
-    response::status::NotFound
+    response::status::{
+        NotFound,
+        BadRequest
+    }
 };
 use uuid::Uuid;
 
+use crate::player::create_player;
+
 #[post("/new/lobby", data = "<player>")]
-pub fn lobby_new<'r>(player: Json<PlayerNew>, lobby_state: State<'r, LobbyState>) -> Option<JsonValue> {
+pub fn lobby_new<'r>(
+    player: Json<PlayerNew>, 
+    lobby_state: State<'r, LobbyState>
+) -> Result<JsonValue, BadRequest<JsonValue>> {
     let code = create_code();
     let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
-    let mut players = lobby_state.inner().players.lock().unwrap();
+    let new_player = create_player(player.0, PlayerRole::Admin, &lobby_state);
 
-    let new_player = Player {
-        name: player.name.clone(),
-        uuid: Uuid::new_v4(),
-        role: PlayerRole::Admin
-    };
+    if new_player.is_err() {
+        return Err(BadRequest(Some(new_player.unwrap_err())));
+    }
+
+    let new_player = new_player.unwrap();
 
     let new_lobby = Lobby {
         code: code.clone(),
@@ -27,9 +35,8 @@ pub fn lobby_new<'r>(player: Json<PlayerNew>, lobby_state: State<'r, LobbyState>
     };
 
     lobbies.insert(code.clone(), new_lobby.clone());
-    players.insert(new_player.uuid, new_player.clone());
 
-    Some(json!({
+    Ok(json!({
         "lobby": new_lobby,
         "creator": new_player
     }))
@@ -41,29 +48,33 @@ pub fn lobby_join<'r>(
     code: String, 
     player: Json<PlayerNew>, 
     lobby_state: State<'r, LobbyState>
-) -> Result<JsonValue, NotFound<JsonValue>> {
+) -> Result<JsonValue, BadRequest<JsonValue>> {
     let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
     let option_lobby = lobbies.get_mut(&code);
 
     match option_lobby {
         Some(lobby) => {
-            let mut players = lobby_state.inner().players.lock().unwrap();
-            let new_player = Player {
-                uuid: Uuid::new_v4(),
-                name: player.name.clone(),
-                role: PlayerRole::Default
-            };
+            let new_player = 
+                create_player(player.0, PlayerRole::Default, &lobby_state);
+
+            if new_player.is_err() {
+                return Err(BadRequest(Some(new_player.unwrap_err())));
+            }
+
+            let new_player = new_player.unwrap();
 
             lobby.players_id.push(new_player.uuid.clone());
-            players.insert(new_player.uuid.clone(), new_player);
 
             Ok(json!({
                 "code": lobby.code,
-                "players": players_from_lobby(&mut lobby.players_id.clone(), &players)
+                "players": players_from_lobby(
+                    &mut lobby.players_id.clone(), 
+                    &lobby_state.inner().players.lock().unwrap()
+                )
             }))
         },
         None => {
-            Err(NotFound(json!({"error": "Lobby not found."})))
+            Err(BadRequest(Some(json!({"error": "Lobby not found."}))))
         }
     }
 }
