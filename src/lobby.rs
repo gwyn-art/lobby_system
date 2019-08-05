@@ -25,7 +25,7 @@ pub fn create_code(lobbies: &HashMap<String, Lobby>) -> String {
         .collect();
 
     if lobbies.contains_key(&code) {
-        return create_code(&lobbies);
+        create_code(&lobbies)
     } else {
         code
     }
