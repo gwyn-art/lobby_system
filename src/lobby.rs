@@ -1,6 +1,7 @@
 use uuid::Uuid;
 use rand::prelude::*;
 use rocket::State;
+use std::collections::HashMap;
 
 use crate::states::LobbyState;
 
@@ -10,7 +11,7 @@ pub struct Lobby {
     pub players_id: Vec<Uuid>
 }
 
-pub fn create_code() -> String {
+pub fn create_code(lobbies: &HashMap<String, Lobby>) -> String {
     let mut rng = rand::thread_rng();
     let mut code = [0; 6];
 
@@ -18,15 +19,21 @@ pub fn create_code() -> String {
         *x = rng.gen_range(0, 10);
     }
 
-    code
+    let code = code
         .into_iter()
         .map(|x| x.to_string())
-        .collect()
+        .collect();
+
+    if lobbies.contains_key(&code) {
+        return create_code(&lobbies);
+    } else {
+        code
+    }
 }
 
 pub fn create_lobby<'r>(creator_id: Uuid, lobby_state: & State<'r, LobbyState>) -> Lobby {
-    let code = create_code();
     let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
+    let code = create_code(&lobbies);
 
     let new_lobby = Lobby {
         code: code.clone(),
