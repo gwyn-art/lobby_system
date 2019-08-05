@@ -16,22 +16,13 @@ pub fn lobby_new<'r>(
     player: Json<PlayerNew>, 
     lobby_state: State<'r, LobbyState>
 ) -> Result<JsonValue, BadRequest<JsonValue>> {
-    let code = create_code();
-    let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
     let new_player = create_player(player.0, PlayerRole::Admin, &lobby_state)?;
-
-    let new_lobby = Lobby {
-        code: code.clone(),
-        players_id: vec![new_player.uuid]
-    };
-
-    lobbies.insert(code.clone(), new_lobby.clone());
+    let new_lobby = create_lobby(new_player.uuid, &lobby_state);
 
     Ok(json!({
         "lobby": new_lobby,
         "creator": new_player
     }))
-    
 }
 
 #[post("/join/lobby/<code>", data = "<player>")]
