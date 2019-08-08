@@ -53,7 +53,7 @@ pub fn create_player<'r>(
                 role: role
             };
 
-            let mut players = lobby_state.inner().players.lock().unwrap();
+            let mut players = lobby_state.inner().players.write().unwrap();
             players.insert(new_player.uuid.clone(), new_player.clone());
 
             Ok(new_player)

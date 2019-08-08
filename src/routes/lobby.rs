@@ -31,7 +31,7 @@ pub fn lobby_join<'r>(
     player: Json<PlayerNew>, 
     lobby_state: State<'r, LobbyState>
 ) -> Result<JsonValue, BadRequest<JsonValue>> {
-    let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
+    let mut lobbies = lobby_state.inner().lobbies.write().unwrap();
 
     match lobbies.get_mut(&code) {
         Some(lobby) => {
@@ -44,7 +44,7 @@ pub fn lobby_join<'r>(
                 "code": lobby.code,
                 "players": players_from_lobby(
                     &mut lobby.players_id.clone(), 
-                    &lobby_state.inner().players.lock().unwrap()
+                    &lobby_state.inner().players.read().unwrap()
                 )
             }))
         },
@@ -59,7 +59,7 @@ pub fn lobby_join<'r>(
 
 #[get("/all/lobby")]
 pub fn lobby_all<'r>(lobby_state: State<'r, LobbyState>) -> Json<Vec<Lobby>> {
-    let lobbies = lobby_state.inner().lobbies.lock().unwrap();
+    let lobbies = lobby_state.inner().lobbies.read().unwrap();
     let res = lobbies
         .values()
         .map(|lobby| lobby.clone())

@@ -15,7 +15,7 @@ mod states;
 mod utils;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 use routes::*;
 use states::LobbyState;
@@ -25,8 +25,8 @@ fn main() {
         ::ignite()
         .manage(
             LobbyState { 
-                lobbies: Mutex::new(HashMap::new()),
-                players: Mutex::new(HashMap::new())
+                lobbies: RwLock::new(HashMap::new()),
+                players: RwLock::new(HashMap::new())
             }
         )
         .mount("/", routes![

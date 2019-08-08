@@ -32,7 +32,7 @@ pub fn create_code(lobbies: &HashMap<String, Lobby>) -> String {
 }
 
 pub fn create_lobby<'r>(creator_id: Uuid, lobby_state: & State<'r, LobbyState>) -> Lobby {
-    let mut lobbies = lobby_state.inner().lobbies.lock().unwrap();
+    let mut lobbies = lobby_state.inner().lobbies.write().unwrap();
     let code = create_code(&lobbies);
 
     let new_lobby = Lobby {
