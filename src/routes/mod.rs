@@ -1,5 +1,2 @@
-mod lobby;
-mod player;
-
-pub use lobby::*;
-pub use player::*;
+pub mod lobby;
+pub mod player;

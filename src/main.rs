@@ -17,23 +17,19 @@ mod utils;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use routes::*;
 use states::LobbyState;
 
 fn main() {
-    rocket
-        ::ignite()
+    let mut rocket = rocket::ignite()
         .manage(
             LobbyState { 
                 lobbies: RwLock::new(HashMap::new()),
                 players: RwLock::new(HashMap::new())
             }
-        )
-        .mount("/", routes![
-            lobby_new,
-            lobby_all,
-            lobby_join,
-            player_all
-        ])
-        .launch();
+        );
+
+    rocket = routes::player::mount(rocket);
+    rocket = routes::lobby::mount(rocket);
+
+    rocket.launch();
 }

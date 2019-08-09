@@ -11,8 +11,8 @@ use crate::lobby::*;
 use crate::LobbyState;
 use crate::player::create_player;
 
-#[post("/new/lobby", data = "<player>")]
-pub fn lobby_new<'r>(
+#[post("/new", data = "<player>")]
+fn new<'r>(
     player: Json<PlayerNew>, 
     lobby_state: State<'r, LobbyState>
 ) -> Result<JsonValue, BadRequest<JsonValue>> {
@@ -25,8 +25,8 @@ pub fn lobby_new<'r>(
     }))
 }
 
-#[post("/join/lobby/<code>", data = "<player>")]
-pub fn lobby_join<'r>(
+#[post("/join/<code>", data = "<player>")]
+fn join<'r>(
     code: String, 
     player: Json<PlayerNew>, 
     lobby_state: State<'r, LobbyState>
@@ -57,8 +57,8 @@ pub fn lobby_join<'r>(
     }
 }
 
-#[get("/all/lobby")]
-pub fn lobby_all<'r>(lobby_state: State<'r, LobbyState>) -> Json<Vec<Lobby>> {
+#[get("/all")]
+fn all<'r>(lobby_state: State<'r, LobbyState>) -> Json<Vec<Lobby>> {
     let lobbies = lobby_state.inner().lobbies.read().unwrap();
     let res = lobbies
         .values()
@@ -66,4 +66,9 @@ pub fn lobby_all<'r>(lobby_state: State<'r, LobbyState>) -> Json<Vec<Lobby>> {
         .collect();
 
     Json(res)
+}
+
+pub fn mount(rocket: rocket::Rocket) -> rocket::Rocket {
+    rocket
+        .mount("/lobby", routes![all, new, join])
 }
