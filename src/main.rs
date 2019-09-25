@@ -20,6 +20,7 @@ use std::sync::RwLock;
 use states::LobbyState;
 
 fn main() {
+    println!("Hello!3");
     let mut rocket = rocket::ignite()
         .manage(
             LobbyState { 
